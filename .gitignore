@@ -1,0 +1,7 @@
+.idea
+.DS_Store
+build
+venv
+main.py
+__pycache__
+*-workspace

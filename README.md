@@ -34,7 +34,7 @@ To power the XBees I'm using **Hi-Link HLK-2M03**.
   
 ### Install [PyCharm](https://www.jetbrains.com/pycharm/) and the [Digi XBee Plugin](https://plugins.jetbrains.com/plugin/12445-digi-xbee)  
   
-> The Digi Plugin is not properly developed/maintained, therefore it almost never works with the latest version of PyCharm. At present I'm working with PyCharm 2022.2.1 and Digi plugin 2.1.4 (which doesn't work on 2022.2.2).  
+> The Digi Plugin is not properly developed/maintained, therefore it [almost never](https://www.digi.com/support/forum/83401/pycharm-plugin-doesnt-work-with-pycharm-2022-2-2) works with the latest version of PyCharm. At present I'm working with PyCharm 2022.2.1 and Digi plugin 2.1.4 (which doesn't work on 2022.2.2).  
   
 ### Install [mpy-cross](https://pypi.org/project/mpy-cross/)  
 mpy-cross is need to cross compile the MicroPython code, otherwise the already very restricted RAM will most likely not be enough to run the project.  
@@ -57,7 +57,7 @@ mpy-cross is need to cross compile the MicroPython code, otherwise the already v
 ![settings](xbee-micropython.png)  
   
 In the `Project Structure` section, set the following on the `Exclude files` field:  
-`__init__.py;*DS_Store;drivers;test_*;sample*;*pycache*;*.md;*.png`  
+`__init__.py;*DS_Store;drivers;hpm;test_*;sample*;*pycache*;*.md;*.png`  
   
 ### Deployment  
   
@@ -65,7 +65,7 @@ In the `Project Structure` section, set the following on the `Exclude files` fie
 > see Hubitat Drivers and Libs below  
 * Copy the `sample_main.py` to a `main.py` file.  
 * Adjust the device creation according to what is being deployed.  
-* If you are deploying for production, change `IS_PROD` to `True` on `hubee.py.  
+* If you are developing, change `IS_PROD` to `False` on `hubee.py`.  
   
   
 If there is a memory allocation problem when running the code, you can exclude the files you don't need using the `Exclude files` option. Bytecode uses RAM even when not in use.  

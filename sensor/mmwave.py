@@ -1,8 +1,10 @@
 import time
 from sys import stdin
 
-import hubee
 from sensor.presence import PresenceDevice
+
+_EP_PRESENCE = const(0x02)
+_P_RADAR = 'RA'
 
 
 # Hi-Link HLK-LD1125H-24G mmWave Radar
@@ -13,7 +15,7 @@ class PresenceSensor(PresenceDevice):
         self.config_timeout = 500
 
     def get_endpoint(self) -> int:
-        return hubee.EP_PRESENCE
+        return _EP_PRESENCE
 
     def is_present(self):
         # TODO: Use a pre-allocated buffer? https://docs.micropython.org/en/latest/reference/constrained.html#execution-phase
@@ -24,16 +26,16 @@ class PresenceSensor(PresenceDevice):
         lines = read_bytes.split(b'\n')
         i = len(lines) - 1
         while i >= 0:
-            line = lines[i].decode('ascii')
+            line = lines[i].decode()
             if line.startswith('mov') or line.startswith('occ'):
                 return True
             i = i - 1
         return False
 
-    def configure(self, json_conf: object):
+    def configure(self, json_conf):
         super().configure(json_conf)
         for i in range(0x03):
-            self._configure_radar_settings(json_conf[hubee.P_RADAR] + ';save')
+            self._configure_radar_settings(json_conf[_P_RADAR] + ';save')
 
     def _configure_radar_settings(self, settings: str):
         for setting in settings.split(';'):

@@ -4,8 +4,24 @@ import json
 import uio
 import uos
 
-import hubee
 from zigbee import Zigbee
+
+# @formatter:off
+_CMD_STATUS     = '01'
+_CMD_CONFIG     = '02'
+_CMD_STARTED    = '03'
+_CMD_REPLY      = '04'
+_CMD_UNKNOWN    = '88'
+_CMD_INFO       = '97'
+_CMD_WARN       = '98'
+_CMD_ERROR      = '99'
+
+_P_FIXED        = 'FI'
+_P_OFFSET       = 'OF'
+_P_AMOUNT       = 'AM'
+_P_MIN_INTERVAL = 'MI'
+_P_MAX_INTERVAL = 'MA'
+# @formatter:on
 
 
 class Device:
@@ -22,7 +38,7 @@ class Device:
 
     def start(self, zigbee: Zigbee):
         self.zigbee = zigbee
-        self._transmit(hubee.CMD_STARTED, 'Device on endpoint {} started', self.get_endpoint())
+        self._transmit(_CMD_STARTED, 'Device on endpoint {} started', self.get_endpoint())
         self._config_start()
 
     def _config_start(self):
@@ -32,7 +48,7 @@ class Device:
             conf_file.close()
             self._load_config(content)
         else:
-            self._transmit(hubee.CMD_CONFIG, 'Send me my config')
+            self._transmit(_CMD_CONFIG, 'Send me my config')
 
     def _save_config(self, payload: str):
         if self._config_file_exists():
@@ -42,13 +58,12 @@ class Device:
         conf_file.write(payload.encode())
         conf_file.close()
         gc.collect()
-        self.debug('{} saved', self.config_file_name)
 
     def _config_file_exists(self):
         return self.config_file_name in uos.listdir()
 
     def handle_command(self, command: str, payload: str):
-        if command == hubee.CMD_CONFIG:
+        if command == _CMD_CONFIG:
             self._load_config(payload)
             self._save_config(payload)
         else:
@@ -66,30 +81,30 @@ class Device:
 
     def handle_unknown_command(self, command: str, endpoint: int = None):
         actual_endpoint = endpoint if self.get_endpoint() is None else endpoint
-        self._transmit(hubee.CMD_ERROR, 'Unknown command: EP: {}, CMD: {}', actual_endpoint, command)
-
-    def debug(self, message: str, *args):
-        hubee.debug(message, self.get_endpoint(), *args)
+        self._transmit(_CMD_ERROR, 'Unknown cmd: EP: {}, CMD: {}', actual_endpoint, command)
 
     def transmit_status(self, status: str, *args):
-        self._transmit(hubee.CMD_STATUS, status, *args)
+        self._transmit(_CMD_STATUS, status, *args)
 
     def transmit_reply(self, message: str, *args):
-        self._transmit(hubee.CMD_REPLY, message, *args)
+        self._transmit(_CMD_REPLY, message, *args)
 
     def transmit_warn(self, message: str, *args):
-        self._transmit(hubee.CMD_WARN, message, *args)
+        self._transmit(_CMD_WARN, message, *args)
 
     def transmit_info(self, message: str, *args):
-        self._transmit(hubee.CMD_INFO, message, *args)
+        self._transmit(_CMD_INFO, message, *args)
 
     def _transmit(self, command: str, payload: str, *args):
         self.zigbee.transmit(self.get_endpoint(), command, payload, *args)
 
+    def str_2_decimals(self, value) -> str:
+        return "{:.2f}".format(value)
+
     def child_check_send_status(self, time_now: int):
         raise NotImplementedError
 
-    def configure(self, json_conf: object):
+    def configure(self, json_conf):
         raise NotImplementedError
 
     def get_endpoint(self) -> int:
@@ -118,7 +133,7 @@ class PeriodicDevice(Device):
         return time_now - self.last_report_time >= self.min_interval
 
     def configure(self, json_conf: object):
-        self._set_min_interval(json_conf[hubee.P_MIN_INTERVAL])
+        self._set_min_interval(json_conf[_P_MIN_INTERVAL])
 
     def _report(self):
         self.transmit_status(self.get_report_value())
@@ -132,7 +147,7 @@ class NumericChangeDevice(PeriodicDevice):
     def __init__(self):
         super().__init__()
         self.offset = 0x00
-        self.last_reported_value = -9999999
+        self.last_reported_value = None
         self.max_interval = None
         self.change_amount = None
         self.fixed_value = None
@@ -149,7 +164,7 @@ class NumericChangeDevice(PeriodicDevice):
                 self.do_report(time_now)
 
     def _should_report(self, time_now: int) -> bool:
-        if self._max_interval_expired(time_now):
+        if self._max_interval_expired(time_now) or self.last_reported_value is None:
             return True
 
         diff = abs(self.last_reading - self.last_reported_value)
@@ -168,12 +183,12 @@ class NumericChangeDevice(PeriodicDevice):
     def _max_interval_expired(self, time_now):
         return time_now - self.last_report_time >= self.max_interval
 
-    def configure(self, json_conf: object):
+    def configure(self, json_conf):
         super().configure(json_conf)
-        self.offset = json_conf[hubee.P_OFFSET]
-        self.fixed_value = json_conf[hubee.P_FIXED]
-        self.change_amount = json_conf[hubee.P_AMOUNT]
-        self._set_max_interval(json_conf[hubee.P_MAX_INTERVAL])
+        self.offset = json_conf[_P_OFFSET]
+        self.fixed_value = json_conf[_P_FIXED]
+        self.change_amount = json_conf[_P_AMOUNT]
+        self._set_max_interval(json_conf[_P_MAX_INTERVAL])
 
     def read_sensor(self):
         raise NotImplementedError

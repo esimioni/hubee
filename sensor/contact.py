@@ -1,7 +1,9 @@
 from machine import Pin
 
-import hubee
 from device import Device
+
+_EP_CONTACT = const(0x03)
+_P_OPEN_STATE = 'OS'
 
 
 class ContactSensor(Device):
@@ -13,7 +15,7 @@ class ContactSensor(Device):
         self.open_state = 1
 
     def get_endpoint(self) -> int:
-        return hubee.EP_CONTACT
+        return _EP_CONTACT
 
     def send_status(self, is_open: bool):
         self.open = is_open
@@ -24,8 +26,8 @@ class ContactSensor(Device):
         if is_open != self.open:
             self.send_status(is_open)
 
-    def configure(self, json_conf: object):
-        self.open_state = json_conf[hubee.P_OPEN_STATE]
+    def configure(self, json_conf):
+        self.open_state = json_conf[_P_OPEN_STATE]
 
     def _is_open(self) -> bool:
         return self.check_pin.value() == self.open_state

@@ -1,6 +1,14 @@
-import hubee
 from device import NumericChangeDevice
 from sensor.bme680 import BME680
+
+# @formatter:off
+_EP_TEMPERATURE = const(0x04)
+_EP_HUMIDITY    = const(0x05)
+_EP_PRESSURE    = const(0x06)
+_EP_AIR_QUALITY = const(0x07)
+
+_P_SCALE        = 'SC'
+# @formatter:on
 
 
 class EnvironmentDevice(NumericChangeDevice):
@@ -17,35 +25,35 @@ class TemperatureSensor(EnvironmentDevice):
         self.celsius = True
 
     def get_endpoint(self) -> int:
-        return hubee.EP_TEMPERATURE
+        return _EP_TEMPERATURE
 
     def read_sensor(self):
         return (self.bme.temperature if self.celsius else self.bme.temperature * 1.8 + 32) + self.offset
 
     def get_report_value(self):
-        return hubee.str_2_decimals(self.last_reading)
+        return self.str_2_decimals(self.last_reading)
 
     def configure(self, json_conf: object):
         super().configure(json_conf)
-        self.celsius = json_conf[hubee.P_SCALE] is 'C'
+        self.celsius = json_conf[_P_SCALE] is 'C'
 
 
 class HumiditySensor(EnvironmentDevice):
 
     def get_endpoint(self) -> int:
-        return hubee.EP_HUMIDITY
+        return _EP_HUMIDITY
 
     def read_sensor(self):
         return self.bme.humidity + self.offset
 
     def get_report_value(self):
-        return hubee.str_2_decimals(self.last_reading)
+        return self.str_2_decimals(self.last_reading)
 
 
 class AirQualitySensor(EnvironmentDevice):
 
     def get_endpoint(self) -> int:
-        return hubee.EP_AIR_QUALITY
+        return _EP_AIR_QUALITY
 
     def read_sensor(self):
         return (self.bme.gas / 1000) + self.offset  # KOhms
@@ -57,7 +65,7 @@ class AirQualitySensor(EnvironmentDevice):
 class PressureSensor(EnvironmentDevice):
 
     def get_endpoint(self) -> int:
-        return hubee.EP_PRESSURE
+        return _EP_PRESSURE
 
     def read_sensor(self):
         return self.bme.pressure + self.offset  # hPa

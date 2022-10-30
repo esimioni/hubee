@@ -12,6 +12,7 @@ from sensor.presence import ProximitySensor
 # import micropython
 # gc.collect()
 # micropython.mem_info()
+# micropython.qstr_info(1)
 
 # def print_mf(step: str):
 #     gc.collect()
@@ -32,4 +33,4 @@ lux         = LuxSensor(tsl)
 proximity   = ProximitySensor(i2c)
 # @formatter:on
 
-Controller([contact, presence, temperature, humidity, air_quality, pressure, lux, proximity]).run()
+Controller([contact, presence, temperature, humidity, air_quality, pressure, lux, proximity], (bme, tsl)).run()

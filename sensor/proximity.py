@@ -1,7 +1,9 @@
 import time
 
-import hubee
 from sensor.presence import PresenceDevice
+
+_EP_PROXIMITY = const(0x09)
+_P_DISTANCE = 'DI'
 
 
 # TOF10120 Laser distance sensor
@@ -14,7 +16,7 @@ class ProximitySensor(PresenceDevice):
         self.trigger_distance = 0x00
 
     def get_endpoint(self) -> int:
-        return hubee.EP_PROXIMITY
+        return _EP_PROXIMITY
 
     def is_present(self):
         self.i2c.writeto(self.addr, b'0x00')
@@ -23,6 +25,6 @@ class ProximitySensor(PresenceDevice):
         data = int.from_bytes(data, 'big')
         return data <= self.trigger_distance
 
-    def configure(self, json_conf: object):
+    def configure(self, json_conf):
         super().configure(json_conf)
-        self.trigger_distance = json_conf[hubee.P_DISTANCE]
+        self.trigger_distance = json_conf[_P_DISTANCE]

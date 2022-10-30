@@ -1,6 +1,7 @@
-import hubee
 from device import Device
 from zigbee import Zigbee
+
+_P_TIMEOUT = 'TO'
 
 
 class PresenceDevice(Device):
@@ -8,7 +9,7 @@ class PresenceDevice(Device):
     def __init__(self):
         super().__init__()
         self.last_detected = 0x00
-        self.timeout = 5000
+        self.timeout = None
         self.present = False
 
     def start(self, zigbee: Zigbee):
@@ -29,8 +30,8 @@ class PresenceDevice(Device):
         elif self.present and (time_now - self.last_detected) >= self.timeout:
             self.send_status(False)
 
-    def configure(self, json_conf: object):
-        self.timeout = json_conf[hubee.P_TIMEOUT]
+    def configure(self, json_conf):
+        self.timeout = json_conf[_P_TIMEOUT]
 
     def is_present(self):
         raise NotImplementedError

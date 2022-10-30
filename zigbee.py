@@ -19,14 +19,19 @@ class Zigbee:
     def transmit(self, endpoint: int, command: str, payload: str, *args):
         gc.collect()
         payld_fttd = payload.format(*args)
-        hubee.debug('<< EP {} sending  {}: {}', None, endpoint, command, payld_fttd)
+        self.debug('<< EP {} sending  {}: {}', None, endpoint, command, payld_fttd)
         hex_payld = binascii.hexlify(payld_fttd)
         tx_req = '{}{}{}{}{}'.format('7E00', self._msg_len(hex_payld), '2D', command, hex_payld.decode())
         xbee.transmit(xbee.ADDR_COORDINATOR, binascii.unhexlify(tx_req), source_ep = endpoint, dest_ep = endpoint)
 
-    def _msg_len(self, msg: str):
+    def _msg_len(self, msg: bytes):
         res = 0x02 + len(msg)
         return '{:0>2}'.format(res)
+
+    def debug(self, message: str, endpoint: int = None, *args):
+        if not hubee.IS_PROD:
+            prefix = '' if endpoint is None else '-- EP {} debug    '.format(endpoint)
+            print(prefix + message.format(*args))
 
     def receive(self) -> dict[str, object]:
         msg = xbee.receive()
@@ -37,7 +42,7 @@ class Zigbee:
                 'command' : binascii.hexlify(msg['payload'][2:3]).decode(),
                 'payload' : msg['payload'][3:].decode()
             }
-            hubee.debug('>> EP {} received {}: {}', None, res['endpoint'], res['command'], res['payload'])
+            self.debug('>> EP {} received {}: {}', None, res['endpoint'], res['command'], res['payload'])
             return res
         else:
-            return None
+            return

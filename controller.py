@@ -1,19 +1,22 @@
+import gc
 import time
 
 from umachine import WDT
 
 import hubee
 from device import Device
+from sensor.base import Sensor
 from xbee_device import XBeeDevice
 from zigbee import Zigbee
 
 
 class Controller:
 
-    def __init__(self, devices: list[Device]):
+    def __init__(self, devices: list[Device], sensors: tuple[Sensor] = ()):
         self.wdt = WDT(timeout = (30000 if hubee.IS_PROD else 9999999))
         self.zigbee = Zigbee()
         self.xbee_device = XBeeDevice()
+        self.sensors = sensors
         self.devices = {}
         devices.append(self.xbee_device)
         self._setup(sorted(devices, key = lambda device: device.get_endpoint()))
@@ -23,7 +26,10 @@ class Controller:
             device.start(self.zigbee)
             self.devices[device.get_endpoint()] = device
 
-    def _check_devices(self):
+    def _check_sensors_devices(self):
+        for sensor in self.sensors:
+            sensor.check()
+
         time_now = time.ticks_ms()
         for device in self.devices.values():
             device.check_send_status(time_now)
@@ -42,7 +48,8 @@ class Controller:
 
     def run(self):
         while True:
+            gc.collect()
             self.wdt.feed()
-            self._check_devices()
+            self._check_sensors_devices()
             self._check_zigbee_cmd()
             self.xbee_device.ble_disable()

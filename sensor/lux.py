@@ -1,7 +1,7 @@
 import time
 
-import hubee
 from device import NumericChangeDevice
+from sensor.base import Sensor
 
 # @formatter:off
 _CMD_BIT       = const(0xA0)
@@ -47,6 +47,8 @@ _CASE_GAIN = {
     _GAIN_HIGH: 428.,
     _GAIN_MAX : 9876.,
 }
+
+_EP_LUX = const(0x08)
 # @formatter:on
 
 
@@ -70,32 +72,29 @@ class SMBusEmulator:
         return self._bytes_to_int(data)
 
 
-class Tsl2591:
+# Normally it would sleep for 1 second to perform a reading. Changed it not to sleep for regular readings,
+# so it  can be used in a loop with other devices without impacting their responsiveness.
+class Tsl2591(Sensor):
 
-    def __init__(self, i2c, integration = _INTTIME_100MS, gain = _GAIN_LOW):
-        self.bus = SMBusEmulator(i2c)
-        self.integ_time = integration
-        self.set_gain(gain)
-        self.set_timing(self.integ_time)
-        self._disable()
+    def __init__(self, i2c, integration = _INTTIME_100MS, gain = _GAIN_HIGH, sample_interval = 1000):
+        self._bus = SMBusEmulator(i2c)
+        self._integ_time = integration
+        self._gain = gain
+        self._last_reading_time = 0x00
+        self._last_reading = 0x00
+        self._enabled_wait_ms = int((0.120 * self._integ_time + 0x01) * 1000)
+        self.set_sample_interval(sample_interval)
+        self._setup()
 
-    def set_timing(self, integration):
+    def set_sample_interval(self, sample_interval):
+        self._sample_interval = sample_interval
+
+    def _setup(self):
         self._enable()
-        self.integ_time = integration
-        self.bus.write_byte_data(
+        self._bus.write_byte_data(
             _SENSOR_ADDR,
             _CMD_BIT | _REG_CTRL,
-            self.integ_time | self.gain
-        )
-        self._disable()
-
-    def set_gain(self, gain):
-        self._enable()
-        self.gain = gain
-        self.bus.write_byte_data(
-            _SENSOR_ADDR,
-            _CMD_BIT | _REG_CTRL,
-            self.integ_time | self.gain
+            self._integ_time | self._gain
         )
         self._disable()
 
@@ -103,8 +102,8 @@ class Tsl2591:
         if full == 0xFFFF | ir == 0xFFFF:
             return 0x00
 
-        atime = _CASE_INTEG[self.integ_time]
-        again = _CASE_GAIN[self.gain]
+        atime = _CASE_INTEG[self._integ_time]
+        again = _CASE_GAIN[self._gain]
 
         cpl = atime * again / _LUX_DF
         lux1 = (full - (_LUX_COEFB * ir)) / cpl
@@ -112,23 +111,36 @@ class Tsl2591:
         return max([lux1, lux2])
 
     def _enable(self):
-        self.bus.write_byte_data(_SENSOR_ADDR, _CMD_BIT | _REG_ENABLE, _ENABLE_PWRON | _ENABLE_AEN | _ENABLE_AIEN)
+        self._bus.write_byte_data(_SENSOR_ADDR, _CMD_BIT | _REG_ENABLE, _ENABLE_PWRON | _ENABLE_AEN | _ENABLE_AIEN)
+        self._enabled_time = time.ticks_ms()
 
     def _disable(self):
-        self.bus.write_byte_data(_SENSOR_ADDR, _CMD_BIT | _REG_ENABLE, _ENABLE_PWROFF)
+        self._bus.write_byte_data(_SENSOR_ADDR, _CMD_BIT | _REG_ENABLE, _ENABLE_PWROFF)
+        self._enabled_time = 0x00
 
     def _get_full_luminosity(self):
-        self._enable()
-        # TODO: Cannot sleep this much here, enable and come back later to check
-        time.sleep(int(0.120 * self.integ_time + 0x01))
-        full = self.bus.read_word_data(_SENSOR_ADDR, _CMD_BIT | _REG_CHAN0_LOW)
-        ir = self.bus.read_word_data(_SENSOR_ADDR, _CMD_BIT | _REG_CHAN1_LOW)
-        self._disable()
-        return full, ir
+        if self._enabled_time == 0x00:
+            self._enable()
+            return
 
-    def sample(self):
-        full, ir = self._get_full_luminosity()
-        return self._calculate_lux(full, ir)
+        if time.ticks_ms() - self._enabled_time >= self._enabled_wait_ms:
+            full = self._bus.read_word_data(_SENSOR_ADDR, _CMD_BIT | _REG_CHAN0_LOW)
+            ir = self._bus.read_word_data(_SENSOR_ADDR, _CMD_BIT | _REG_CHAN1_LOW)
+            self._disable()
+            return full, ir
+
+    def check(self):
+        if not time.ticks_ms() - self._last_reading_time < self._sample_interval:
+            res = self._get_full_luminosity()
+            if res:
+                self._last_reading = self._calculate_lux(res[0], res[1])
+                self._last_reading_time = time.ticks_ms()
+
+    def get_last_reading(self):
+        return self._last_reading
+
+    def is_initialized(self):
+        return self._last_reading_time > 0
 
 
 class LuxSensor(NumericChangeDevice):
@@ -136,12 +148,19 @@ class LuxSensor(NumericChangeDevice):
     def __init__(self, tsl: Tsl2591):
         super().__init__()
         self.tsl = tsl
+        while not self.tsl.is_initialized():
+            self.tsl.check()
+            time.sleep_ms(105)
 
     def get_endpoint(self) -> int:
-        return hubee.EP_ILLUMINANCE
+        return _EP_LUX
 
     def read_sensor(self):
-        return self.tsl.sample() + self.offset
+        return self.tsl.get_last_reading() + self.offset
 
-    def _report(self):
-        self.transmit_status(hubee.str_2_decimals(self.last_reading))
+    def get_report_value(self):
+        return self.str_2_decimals(self.last_reading)
+
+    def configure(self, json_conf):
+        super().configure(json_conf)
+        self.tsl.set_sample_interval(self.min_interval)

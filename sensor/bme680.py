@@ -2,6 +2,8 @@ import time
 
 from ustruct import unpack
 
+from sensor.base import Sensor
+
 # @formatter:off
 _COEFF_ADDR1     = const(0x89)
 _COEFF_ADDR2     = const(0xE1)
@@ -55,7 +57,9 @@ _LOOKUP_TB_2 = (
 # @formatter:on
 
 
-# Taken from: https://github.com/adafruit/Adafruit_CircuitPython_BME680/blob/main/adafruit_bme680.py
+# Based on: https://github.com/adafruit/Adafruit_CircuitPython_BME680/blob/main/adafruit_bme680.py
+# The main difference is that this implementation doesn't sleep for regular readings, therefore it
+# can be used in a loop with other devices without impacting their responsiveness. Full reading takes ~200ms
 class AdfBME680:
 
     # refresh_rate: Maximum number of readings per second. Faster property reads will be from the previous reading.
@@ -75,18 +79,20 @@ class AdfBME680:
         self._adc_gas = None
         self._gas_range = None
         self._t_fine = None
+        self._read_set_up = False
         self._last_reading = 0
         self._min_refresh_time = 1000 / refresh_rate
+        self._initialized = False
+        self.temperature = None
+        self.humidity = None
+        self.gas = None
+        self.pressure = None
 
-    @property
-    def temperature(self):
-        self._perform_reading()
+    def _calc_temperature(self):
         calc_temp = ((self._t_fine * 5) + 128) / 256
         return calc_temp / 100
 
-    @property
-    def pressure(self):
-        self._perform_reading()
+    def _calc_pressure(self):
         var1 = (self._t_fine / 2) - 64000
         var2 = ((var1 / 4) * (var1 / 4)) / 2048
         var2 = (var2 * self._pres_calibration[5]) / 4
@@ -105,9 +111,7 @@ class AdfBME680:
         calc_pres += (var1 + var2 + var3 + (self._pres_calibration[6] * 128)) / 16
         return calc_pres / 100
 
-    @property
-    def humidity(self):
-        self._perform_reading()
+    def _calc_humidity(self):
         temp_scaled = ((self._t_fine * 5) + 128) / 256
         var1 = (self._adc_hum - (self._hum_calibration[0] * 16)) - ((temp_scaled * self._hum_calibration[2]) / 200)
         var2 = (self._hum_calibration[1] * (((temp_scaled * self._hum_calibration[3]) / 100) + (
@@ -125,30 +129,32 @@ class AdfBME680:
             calc_hum = 0
         return calc_hum
 
-    @property
-    def gas(self):
-        self._perform_reading()
+    def _calc_gas(self):
         var1 = ((1340 + (5 * self._sw_err)) * _LOOKUP_TB_1[self._gas_range]) / 65536
         var2 = (self._adc_gas * 32768 - 16777216) + var1
         var3 = _LOOKUP_TB_2[self._gas_range] * var1 / 512
         calc_gas_res = (var3 + (var2 / 2)) / var2
         return int(calc_gas_res)
 
-    def _perform_reading(self):
+    def perform_reading(self):
         if time.ticks_diff(self._last_reading, time.ticks_ms()) * time.ticks_diff(0, 1) < self._min_refresh_time:
             return
-        self._write(_REG_CONF, [self._filter << 2])
-        self._write(_REG_CTRL_MEAS, [(self._temp_oversample << 5) | (self._pres_oversample << 2)])
-        self._write(_REG_CTRL_HUM, [self._hum_oversample])
-        self._write(_REG_CTRL_GAS, [_RUNGAS])
-        ctrl = self._read_byte(_REG_CTRL_MEAS)
-        ctrl = (ctrl & 0xFC) | 0x01
-        self._write(_REG_CTRL_MEAS, [ctrl])
-        new_data = False
-        while not new_data:
-            data = self._read(_REG_MEAS_STATUS, 15)
-            new_data = data[0] & 0x80 != 0
-            time.sleep_ms(5)  # TODO: Try to avoid the sleep here. Enable and come back later to check?
+
+        if not self._read_set_up:
+            self.setup_reading()
+            self._read_set_up = True
+
+        new_data = None
+        if self._read_set_up:
+            if not new_data:
+                data = self._read(_REG_MEAS_STATUS, 15)
+                new_data = data[0] & 0x80 != 0
+
+        if new_data:
+            self._read_set_up = False
+            self.read_sensor_data(data)
+
+    def read_sensor_data(self, data):
         self._last_reading = time.ticks_ms()
         # noinspection PyUnboundLocalVariable
         self._adc_pres = self._read24(data[2:5]) / 16
@@ -161,6 +167,25 @@ class AdfBME680:
         var3 = ((var1 / 2) * (var1 / 2)) / 4096
         var3 = (var3 * self._temp_calibration[2] * 16) / 16384
         self._t_fine = int(var2 + var3)
+
+        self.temperature = self._calc_temperature()
+        self.humidity = self._calc_humidity()
+        self.gas = self._calc_gas()
+        self.pressure = self._calc_pressure()
+
+        self._initialized = True
+
+    def setup_reading(self):
+        self._write(_REG_CONF, [self._filter << 2])
+        self._write(_REG_CTRL_MEAS, [(self._temp_oversample << 5) | (self._pres_oversample << 2)])
+        self._write(_REG_CTRL_HUM, [self._hum_oversample])
+        self._write(_REG_CTRL_GAS, [_RUNGAS])
+        ctrl = self._read_byte(_REG_CTRL_MEAS)
+        ctrl = (ctrl & 0xFC) | 0x01
+        self._write(_REG_CTRL_MEAS, [ctrl])
+
+    def is_initialized(self):
+        return self._initialized
 
     def _read_calibration(self):
         coeff = self._read(_COEFF_ADDR1, 25)
@@ -195,12 +220,18 @@ class AdfBME680:
         raise NotImplementedError
 
 
-class BME680(AdfBME680):
+class BME680(AdfBME680, Sensor):
 
     def __init__(self, i2c, refresh_rate = 0.1, address = 0x77):
         self._i2c = i2c
         self._address = address
         super().__init__(refresh_rate)
+        while not self.is_initialized():
+            self.check()
+            time.sleep_ms(10)
+
+    def check(self):
+        super().perform_reading()
 
     def _read(self, register, length):
         res = bytearray(length)

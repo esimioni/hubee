@@ -5,7 +5,7 @@ metadata {
     }
     preferences {
         input (name: "timeout", type: "number", title: "Timeout", description: "In milliseconds", defaultValue: "5000", range: "1..*", required: true)
-        input (name: "triggerDistance", type: "number", title: "Minimum trigger distance", description: "In milimeters", defaultValue: "300", range: "1..*", required: true)
+        input (name: "triggerDistance", type: "number", title: "Minimum trigger distance", description: "In millimeters", defaultValue: "300", range: "1..*", required: true)
     }
 }
 

@@ -27,7 +27,6 @@ def parse(description) {
     def endpoint = descMap.sourceEndpoint
     def command  = descMap.command
     def isChild  = endpoint != EP_XBEE && endpoint != EP_DEFAULT
-    // logDebug "endpoint: ${endpoint}, cluster: ${cluster}, command: ${command}, status: ${parseStatus(descMap)}"
     def device   = isChild ? getOrCreateChild(endpoint, cluster) : this
     def status   = device.parseStatus(descMap)
 
@@ -35,7 +34,7 @@ def parse(description) {
 }
 
 def handleCommand(device, endpoint, cluster, command, status) {
-    if (device.traceEnabled()) device.traceEnabled "Received - endpoint: ${endpoint}, cluster: ${cluster}, command: ${command}, status: ${status}"
+    if (device.traceEnabled()) device.logTrace "Received - endpoint: ${endpoint}, cluster: ${cluster}, command: ${command}, status: ${status}"
     if (device.debugEnabled()) device.logDebug ">> EP ${endpoint} received ${command}: ${status}"
     switch(command) {
         case CMD_STATUS:

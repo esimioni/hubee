@@ -1,9 +1,6 @@
 import gc
 import json
 
-import uio
-import uos
-
 import hubee
 from zigbee import Zigbee
 
@@ -31,7 +28,6 @@ class Device:
         gc.collect()
         self.zigbee = None
         self.configured = False
-        self.config_file_name = 'device-{}-conf.json'.format(self.get_endpoint())
 
     def check_send_status(self, time_now: int):
         if self.configured:
@@ -43,30 +39,11 @@ class Device:
         self._config_start()
 
     def _config_start(self):
-        if self._config_file_exists():
-            conf_file = uio.open(self.config_file_name)
-            content = conf_file.readline()
-            conf_file.close()
-            self._load_config(content)
-        else:
-            self._transmit(_CMD_CONFIG, 'Send me my config')
-
-    def _save_config(self, payload: str):
-        if self._config_file_exists():
-            uos.remove(self.config_file_name)
-
-        conf_file = uio.open(self.config_file_name, mode = 'w')
-        conf_file.write(payload.encode())
-        conf_file.close()
-        gc.collect()
-
-    def _config_file_exists(self):
-        return self.config_file_name in uos.listdir()
+        self._transmit(_CMD_CONFIG, 'Send me my config')
 
     def handle_command(self, command: str, payload: str):
         if command == _CMD_CONFIG:
             self._load_config(payload)
-            self._save_config(payload)
         else:
             self.child_handle_command(command, payload)
 

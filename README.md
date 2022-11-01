@@ -37,7 +37,7 @@ To power the XBees I'm using **Hi-Link HLK-2M03**.
 > The Digi Plugin is not properly developed/maintained, therefore it [almost never](https://www.digi.com/support/forum/83401/pycharm-plugin-doesnt-work-with-pycharm-2022-2-2) works with the latest version of PyCharm. At present I'm working with PyCharm 2022.2.1 and Digi plugin 2.1.4 (which doesn't work on 2022.2.2).  
   
 ### Install [mpy-cross](https://pypi.org/project/mpy-cross/)  
-mpy-cross is need to cross compile the MicroPython code, otherwise the already very restricted RAM will most likely not be enough to run the project.  
+mpy-cross is needed to cross compile the MicroPython code, otherwise the already very restricted RAM will most likely not be enough to run the project.  
   
 **Before running any command for the project on a terminal, you must be in the project root folder and execute:**  
   

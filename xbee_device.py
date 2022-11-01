@@ -28,6 +28,7 @@ class XBeeDevice(NumericChangeDevice):
 
     def start(self, zigbee: Zigbee):
         super().start(zigbee)
+        self._ble_on_off(True)
 
     def read_sensor(self):
         voltage = str(xbee.atcmd('%V'))

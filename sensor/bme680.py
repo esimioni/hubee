@@ -1,7 +1,9 @@
+import gc
 import time
 
 from ustruct import unpack
 
+import hubee
 from sensor.base import Sensor
 
 # @formatter:off
@@ -62,8 +64,7 @@ _LOOKUP_TB_2 = (
 # can be used in a loop with other devices without impacting their responsiveness. Full reading takes ~200ms
 class AdfBME680:
 
-    # refresh_rate: Maximum number of readings per second. Faster property reads will be from the previous reading.
-    def __init__(self, refresh_rate: int):
+    def __init__(self, refresh_ms: int):
         self._write(_REG_SOFTRESET, [0xB6])
         time.sleep_ms(5)
         self._read_calibration()
@@ -80,8 +81,8 @@ class AdfBME680:
         self._gas_range = None
         self._t_fine = None
         self._read_set_up = False
-        self._last_reading = 0
-        self._min_refresh_time = 1000 / refresh_rate
+        self._last_reading = None
+        self._refresh_ms = refresh_ms
         self._initialized = False
         self.temperature = None
         self.humidity = None
@@ -137,7 +138,7 @@ class AdfBME680:
         return int(calc_gas_res)
 
     def perform_reading(self):
-        if time.ticks_diff(self._last_reading, time.ticks_ms()) * time.ticks_diff(0, 1) < self._min_refresh_time:
+        if not hubee.interval_expired(time.ticks_ms(), self._last_reading, self._refresh_ms):
             return
 
         if not self._read_set_up:
@@ -156,7 +157,6 @@ class AdfBME680:
 
     def read_sensor_data(self, data):
         self._last_reading = time.ticks_ms()
-        # noinspection PyUnboundLocalVariable
         self._adc_pres = self._read24(data[2:5]) / 16
         self._adc_temp = self._read24(data[5:8]) / 16
         self._adc_hum = unpack('>H', bytes(data[8:10]))[0]
@@ -222,10 +222,11 @@ class AdfBME680:
 
 class BME680(AdfBME680, Sensor):
 
-    def __init__(self, i2c, refresh_rate = 0.1, address = 0x77):
+    def __init__(self, i2c, refresh_ms = 10000, address = 0x77):
+        gc.collect()
         self._i2c = i2c
         self._address = address
-        super().__init__(refresh_rate)
+        super().__init__(refresh_ms)
         while not self.is_initialized():
             self.check()
             time.sleep_ms(10)

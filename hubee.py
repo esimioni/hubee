@@ -1,4 +1,13 @@
+import time
+
 IS_PROD = True
+
+
+def interval_expired(time_now: int, time_ref: int, interval: int) -> bool:
+    if time_ref is None:
+        return True
+
+    return time.ticks_diff(time_now, time_ref) >= interval
 
 # Just for reference. Moved to the modules to save RAM.
 # EP_XBEE        = const(0x01)

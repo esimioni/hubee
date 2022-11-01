@@ -1,5 +1,6 @@
 import time
 
+import hubee
 from device import NumericChangeDevice
 from sensor.base import Sensor
 
@@ -123,14 +124,14 @@ class Tsl2591(Sensor):
             self._enable()
             return
 
-        if time.ticks_ms() - self._enabled_time >= self._enabled_wait_ms:
+        if hubee.interval_expired(time.ticks_ms(), self._enabled_time, self._enabled_wait_ms):
             full = self._bus.read_word_data(_SENSOR_ADDR, _CMD_BIT | _REG_CHAN0_LOW)
             ir = self._bus.read_word_data(_SENSOR_ADDR, _CMD_BIT | _REG_CHAN1_LOW)
             self._disable()
             return full, ir
 
     def check(self):
-        if not time.ticks_ms() - self._last_reading_time < self._sample_interval:
+        if hubee.interval_expired(time.ticks_ms(), self._last_reading_time, self._sample_interval):
             res = self._get_full_luminosity()
             if res:
                 self._last_reading = self._calculate_lux(res[0], res[1])

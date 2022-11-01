@@ -46,7 +46,7 @@ class PresenceSensor(PresenceDevice):
         start = time.ticks_ms()
         print(conf + '\r')
         time.sleep_ms(30)
-        while (time.ticks_ms() - start) <= self.config_timeout:
+        while time.ticks_diff(time.ticks_ms(), start) <= self.config_timeout:
             read_bytes = stdin.buffer.read()
             if read_bytes is None:
                 continue

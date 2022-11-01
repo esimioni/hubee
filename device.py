@@ -4,6 +4,7 @@ import json
 import uio
 import uos
 
+import hubee
 from zigbee import Zigbee
 
 # @formatter:off
@@ -115,7 +116,7 @@ class PeriodicDevice(Device):
 
     def __init__(self):
         super().__init__()
-        self.last_report_time = 0x00
+        self.last_report_time = None
         self.min_interval = None
 
     def _set_min_interval(self, value: int):
@@ -130,7 +131,7 @@ class PeriodicDevice(Device):
         self.last_report_time = time_now
 
     def min_interval_expired(self, time_now):
-        return time_now - self.last_report_time >= self.min_interval
+        return hubee.interval_expired(time_now, self.last_report_time, self.min_interval)
 
     def configure(self, json_conf: object):
         self._set_min_interval(json_conf[_P_MIN_INTERVAL])
@@ -146,7 +147,7 @@ class NumericChangeDevice(PeriodicDevice):
 
     def __init__(self):
         super().__init__()
-        self.offset = 0x00
+        self.offset = None
         self.last_reported_value = None
         self.max_interval = None
         self.change_amount = None
@@ -181,7 +182,7 @@ class NumericChangeDevice(PeriodicDevice):
         return percentage_change >= self.change_amount
 
     def _max_interval_expired(self, time_now):
-        return time_now - self.last_report_time >= self.max_interval
+        return hubee.interval_expired(time_now, self.last_report_time, self.max_interval)
 
     def configure(self, json_conf):
         super().configure(json_conf)

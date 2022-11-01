@@ -1,3 +1,4 @@
+import hubee
 from device import Device
 from zigbee import Zigbee
 
@@ -27,7 +28,7 @@ class PresenceDevice(Device):
             self.last_detected = time_now
             if not self.present:
                 self.send_status(True)
-        elif self.present and (time_now - self.last_detected) >= self.timeout:
+        elif self.present and hubee.interval_expired(time_now, self.last_detected, self.timeout):
             self.send_status(False)
 
     def configure(self, json_conf):

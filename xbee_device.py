@@ -3,6 +3,7 @@ import time
 import machine
 import xbee
 
+import hubee
 from device import NumericChangeDevice
 from zigbee import Zigbee
 
@@ -48,7 +49,7 @@ class XBeeDevice(NumericChangeDevice):
         self.transmit_reply('Bluetooth {}', 'on' if on else 'off')
 
     def ble_disable(self):
-        if self.ble_on and time.ticks_ms() - self.ble_on_since >= _BLE_ON_PERIOD:
+        if self.ble_on and hubee.interval_expired(time.ticks_ms(), self.ble_on_since, _BLE_ON_PERIOD):
             self._ble_on_off(False)
 
     def _module_set_name(self, name: str):

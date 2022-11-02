@@ -81,7 +81,7 @@ class Tsl2591(Sensor):
         self._bus = SMBusEmulator(i2c)
         self._integ_time = integration
         self._gain = gain
-        self._last_reading_time = 0x00
+        self._last_reading_time = None
         self._last_reading = 0x00
         self._enabled_wait_ms = int((0.120 * self._integ_time + 0x01) * 1000)
         self.set_sample_interval(sample_interval)
@@ -141,7 +141,7 @@ class Tsl2591(Sensor):
         return self._last_reading
 
     def is_initialized(self):
-        return self._last_reading_time > 0
+        return self._last_reading_time is not None
 
 
 class LuxSensor(NumericChangeDevice):
@@ -157,7 +157,8 @@ class LuxSensor(NumericChangeDevice):
         return _EP_LUX
 
     def read_sensor(self):
-        return self.tsl.get_last_reading() + self.offset
+        reading = self.tsl.get_last_reading() + self.offset
+        return reading if reading >= 0 else 0
 
     def get_report_value(self):
         return self.str_2_decimals(self.last_reading)

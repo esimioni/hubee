@@ -61,7 +61,11 @@ _LOOKUP_TB_2 = (
 
 # Based on: https://github.com/adafruit/Adafruit_CircuitPython_BME680/blob/main/adafruit_bme680.py
 # The main difference is that this implementation doesn't sleep for regular readings, therefore it
-# can be used in a loop with other devices without impacting their responsiveness. Full reading takes ~200ms
+# can be used in a loop with other devices, without impacting their responsiveness. Full reading takes ~200ms
+#
+# - Oversampling
+# Higher oversampling value means more stable sensor readings, with less noise and jitter.
+# However each step of oversampling adds about 2ms to the latency, causing a slower response time.
 class AdfBME680:
 
     def __init__(self, refresh_ms: int):
@@ -130,6 +134,9 @@ class AdfBME680:
             calc_hum = 0
         return calc_hum
 
+    # Ideally should have another method to calculate Air Quality Index
+    # https://github.com/pimoroni/bme680-python/blob/master/examples/indoor-air-quality.py
+    # https://www.circuitschools.com/interfacing-bme680-with-arduino-also-measure-indoor-air-quality-index
     def _calc_gas(self):
         var1 = ((1340 + (5 * self._sw_err)) * _LOOKUP_TB_1[self._gas_range]) / 65536
         var2 = (self._adc_gas * 32768 - 16777216) + var1

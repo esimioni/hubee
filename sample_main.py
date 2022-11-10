@@ -33,4 +33,5 @@ lux         = LuxSensor(tsl)
 proximity   = ProximitySensor(i2c)
 # @formatter:on
 
+# If there is a single sensor use this syntax, with the comma: (bme,)
 Controller([contact, presence, temperature, humidity, air_quality, pressure, lux, proximity], (bme, tsl)).run()

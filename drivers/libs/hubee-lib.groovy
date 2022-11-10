@@ -41,6 +41,7 @@ import groovy.transform.Field
 
 /** CONFIGURATION PARAMETERS **/
 @Field static final PRM_NAME         = 'NA'
+@Field static final PRM_GAIN         = 'GA'
 @Field static final PRM_FIXED        = 'FI'
 @Field static final PRM_SCALE        = 'SC'
 @Field static final PRM_RADAR        = 'RA'
@@ -48,6 +49,7 @@ import groovy.transform.Field
 @Field static final PRM_AMOUNT       = 'AM'
 @Field static final PRM_TIMEOUT      = 'TO'
 @Field static final PRM_DISTANCE     = 'DI'
+@Field static final PRM_INTEG_TIME   = 'IT'
 @Field static final PRM_OPEN_STATE   = 'OS'
 @Field static final PRM_MAX_INTERVAL = 'MA'
 @Field static final PRM_MIN_INTERVAL = 'MI'

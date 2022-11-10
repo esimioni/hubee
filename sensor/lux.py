@@ -50,6 +50,9 @@ _CASE_GAIN = {
 }
 
 _EP_LUX = const(0x08)
+
+_P_GAIN       = 'GA'
+_P_INTEG_TIME = 'IT'
 # @formatter:on
 
 
@@ -73,25 +76,30 @@ class SMBusEmulator:
         return self._bytes_to_int(data)
 
 
-# Normally it would sleep for 1 second to perform a reading. Changed it not to sleep for regular readings,
-# so it  can be used in a loop with other devices without impacting their responsiveness.
+# Normally it would sleep for at least 1 second to perform a reading. Changed it not to sleep for regular
+# readings, so it  can be used in a loop with other devices without impacting their responsiveness.
+#
+# Increasing the integration time and/or gain leads to more precise low-light readings, but renders the
+# sensor useless for higher light readings, see the first 'if' in '_calculate_lux' method.
 class Tsl2591(Sensor):
 
-    def __init__(self, i2c, integration = _INTTIME_100MS, gain = _GAIN_HIGH, sample_interval = 1000):
+    def __init__(self, i2c, integration = _INTTIME_100MS, gain = _GAIN_LOW):
         self._bus = SMBusEmulator(i2c)
+        self._last_reading_time = None
+        self._integ_time = None
+        self._gain = None
+        self._sample_interval = None
+        self._enabled_wait_ms = None
+        self._last_reading = None
+        self.setup(integration, gain, 1000)
+
+    def setup(self, integration, gain, sample_interval):
         self._integ_time = integration
         self._gain = gain
-        self._last_reading_time = None
-        self._last_reading = 0x00
-        self._enabled_wait_ms = int((0.120 * self._integ_time + 0x01) * 1000)
-        self.set_sample_interval(sample_interval)
-        self._setup()
-
-    def set_sample_interval(self, sample_interval):
         self._sample_interval = sample_interval
-
-    def _setup(self):
         self._enable()
+        self._enabled_wait_ms = int((0.120 * self._integ_time + 0x01) * 1000)
+        self._last_reading_time = None
         self._bus.write_byte_data(
             _SENSOR_ADDR,
             _CMD_BIT | _REG_CTRL,
@@ -101,7 +109,7 @@ class Tsl2591(Sensor):
 
     def _calculate_lux(self, full, ir):
         if full == 0xFFFF | ir == 0xFFFF:
-            return 0x00
+            return self._last_reading
 
         atime = _CASE_INTEG[self._integ_time]
         again = _CASE_GAIN[self._gain]
@@ -165,4 +173,4 @@ class LuxSensor(NumericChangeDevice):
 
     def configure(self, json_conf):
         super().configure(json_conf)
-        self.tsl.set_sample_interval(self.min_interval)
+        self.tsl.setup(json_conf[_P_INTEG_TIME], json_conf[_P_GAIN], self.min_interval)

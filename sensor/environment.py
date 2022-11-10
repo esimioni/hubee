@@ -17,6 +17,10 @@ class EnvironmentDevice(NumericChangeDevice):
         super().__init__()
         self.bme = bme
 
+    def configure(self, json_conf):
+        super().configure(json_conf)
+        self.bme.set_refresh_time(self.get_endpoint(), self.min_interval)
+
 
 class TemperatureSensor(EnvironmentDevice):
 

@@ -93,6 +93,9 @@ class AdfBME680:
         self.gas = None
         self.pressure = None
 
+    def set_refresh_ms(self, refresh_ms: int):
+        self._refresh_ms = refresh_ms
+
     def _calc_temperature(self):
         calc_temp = ((self._t_fine * 5) + 128) / 256
         return calc_temp / 100
@@ -233,6 +236,7 @@ class BME680(AdfBME680, Sensor):
         gc.collect()
         self._i2c = i2c
         self._address = address
+        self._refresh_times = {}
         super().__init__(refresh_ms)
         while not self.is_initialized():
             self.check()
@@ -240,6 +244,10 @@ class BME680(AdfBME680, Sensor):
 
     def check(self):
         super().perform_reading()
+
+    def set_refresh_time(self, endpoint, refresh_ms):
+        self._refresh_times[endpoint] = refresh_ms
+        self.set_refresh_ms(min(self._refresh_times.values()))
 
     def _read(self, register, length):
         res = bytearray(length)

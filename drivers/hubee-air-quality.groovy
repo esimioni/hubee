@@ -1,7 +1,7 @@
 metadata {
-    definition (name: "Hubee Air Quality Sensor", namespace: "edu", author: "Eduardo Simioni") {
-        capability "Sensor"
-        capability "Air Quality"
+    definition (name: 'Hubee Air Quality Sensor', namespace: 'edu', author: 'Eduardo Simioni') {
+        capability 'Sensor'
+        capability 'Air Quality'
     }
 }
 
@@ -14,9 +14,13 @@ def getEndpoint() {
 }
 
 def getEventName() {
-    return "airQualityIndex"
+    return 'airQualityIndex'
+}
+
+def getEventFormats() {
+    return '%s'
 }
 
 def getExtraConfig() {
-    return ""
+    return ''
 }

@@ -1,7 +1,7 @@
 metadata {
-    definition (name: "Hubee Humidity Sensor", namespace: "edu", author: "Eduardo Simioni") {
-        capability "Sensor"
-        capability "Relative Humidity Measurement"
+    definition (name: 'Hubee Humidity Sensor', namespace: 'edu', author: 'Eduardo Simioni') {
+        capability 'Sensor'
+        capability 'Relative Humidity Measurement'
     }
 }
 
@@ -14,9 +14,13 @@ def getEndpoint() {
 }
 
 def getEventName() {
-    return "humidity"
+    return 'humidity'
+}
+
+def getEventFormats() {
+    return '%s%'
 }
 
 def getExtraConfig() {
-    return ""
+    return ''
 }

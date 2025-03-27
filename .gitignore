@@ -3,5 +3,6 @@
 build
 venv
 main.py
+*-backup.py
 __pycache__
 *-workspace

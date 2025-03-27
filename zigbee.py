@@ -4,34 +4,34 @@ import time
 
 import xbee
 
-import hubee
+
+# import hubee
 
 
 class Zigbee:
 
     def __init__(self):
-        self._connect()
+        self.connect()
 
-    def _connect(self):
-        while xbee.atcmd('AI') != 0x00:
+    def connect(self):
+        while xbee.atcmd('AI') != 0:
             time.sleep_ms(50)
 
     def transmit(self, endpoint: int, command: str, payload: str, *args):
         gc.collect()
         payld_fttd = payload.format(*args)
-        self.debug('<< EP {} sending  {}: {}', None, endpoint, command, payld_fttd)
-        hex_payld = binascii.hexlify(payld_fttd)
-        tx_req = '{}{}{}{}{}'.format('7E00', self._msg_len(hex_payld), '2D', command, hex_payld.decode())
-        xbee.transmit(xbee.ADDR_COORDINATOR, binascii.unhexlify(tx_req), source_ep = endpoint, dest_ep = endpoint)
+        # self.debug('<< EP {:02X} sending  {}: {}', None, endpoint, command, payld_fttd)
+        # 7E - Start Delimiter of XBee API Frame - Always 7E.
+        # 2D - Frame type - User Data Relay
+        # Message length plus 2, counting the 2 previous bytes
+        prefix = '7E{:0>4}2D{}'.format((2 + len(payld_fttd) * 2), command)
+        xbee.transmit(xbee.ADDR_COORDINATOR, binascii.unhexlify(prefix) + payld_fttd.encode(), source_ep = endpoint, dest_ep = endpoint)
+        gc.collect()
 
-    def _msg_len(self, msg: bytes):
-        res = 0x02 + len(msg)
-        return '{:0>2}'.format(res)
-
-    def debug(self, message: str, endpoint: int = None, *args):
-        if not hubee.IS_PROD:
-            prefix = '' if endpoint is None else '-- EP {} debug    '.format(endpoint)
-            print(prefix + message.format(*args))
+    # def debug(self, message: str, endpoint: int = None, *args):
+    #     if not hubee.IS_PROD:
+    #         prefix = '' if endpoint is None else '-- EP {:02X} debug    '.format(endpoint)
+    #         print(prefix + message.format(*args))
 
     def receive(self) -> dict[str, object]:
         msg = xbee.receive()
@@ -40,9 +40,10 @@ class Zigbee:
             res = {
                 'endpoint': msg['dest_ep'],
                 'command' : binascii.hexlify(msg['payload'][2:3]).decode(),
-                'payload' : msg['payload'][3:].decode()
+                'payload' : msg['payload'][3:].decode(),
+                'cluster' : msg['cluster']
             }
-            self.debug('>> EP {} received {}: {}', None, res['endpoint'], res['command'], res['payload'])
+            # self.debug('>> EP {:02X} received {}: {}', None, res['endpoint'], res['command'], res['payload'])
             return res
         else:
             return

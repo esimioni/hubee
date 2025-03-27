@@ -1,7 +1,7 @@
 metadata {
-    definition (name: "Hubee Pressure Sensor", namespace: "edu", author: "Eduardo Simioni") {
-        capability "Sensor"
-        capability "Pressure Measurement"
+    definition (name: 'Hubee Pressure Sensor', namespace: 'edu', author: 'Eduardo Simioni') {
+        capability 'Sensor'
+        capability 'Pressure Measurement'
     }
 }
 
@@ -14,9 +14,13 @@ def getEndpoint() {
 }
 
 def getEventName() {
-    return "pressure"
+    return 'pressure'
+}
+
+def getEventFormats() {
+    return '%s hPa'
 }
 
 def getExtraConfig() {
-    return ""
+    return ''
 }

@@ -1,7 +1,7 @@
 metadata {
-    definition (name: "Hubee Temperature Sensor", namespace: "edu", author: "Eduardo Simioni") {
-        capability "Sensor"
-        capability "Temperature Measurement"
+    definition (name: 'Hubee Temperature Sensor', namespace: 'edu', author: 'Eduardo Simioni') {
+        capability 'Sensor'
+        capability 'Temperature Measurement'
     }
 }
 
@@ -14,7 +14,11 @@ def getEndpoint() {
 }
 
 def getEventName() {
-    return "temperature"
+    return 'temperature'
+}
+
+def getEventFormats() {
+    return '%s°' + getTemperatureScale()
 }
 
 def getExtraConfig() {

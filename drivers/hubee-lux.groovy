@@ -1,13 +1,13 @@
 metadata {
-    definition (name: "Hubee Lux Sensor", namespace: "edu", author: "Eduardo Simioni") {
-        capability "Sensor"
-        capability "Illuminance Measurement"
+    definition (name: 'Hubee Lux Sensor', namespace: 'edu', author: 'Eduardo Simioni') {
+        capability 'Sensor'
+        capability 'Illuminance Measurement'
     }
     preferences {
-        input (name: "integrationTime", type: "enum", title: "Integration Time", description: "", defaultValue: 0, required: true,
-               options: [[0:"100ms"],[1:"200ms"],[2:"300ms"],[3:"400ms"],[4:"500ms"],[5:"600ms"]])
-        input (name: "gain", type: "enum", title: "Gain", description: "", defaultValue: 0, required: true,
-               options: [[0:"Low"],[16:"Med"],[32:"High"],[48:"Max"]])
+        input (name: 'integrationTime', type: 'enum', title: 'Integration Time', description: '', defaultValue: 100, required: true,
+               options: [[100:'100ms'],[200:'200ms'],[400:'400ms'],[800:'800ms']])
+        input (name: 'gain', type: 'enum', title: 'Gain', description: '', defaultValue: 1, required: true,
+               options: [[0.125:'Low'],[0.25:'Med'],[1:'High'],[2:'Max']])
     }
 }
 
@@ -20,7 +20,11 @@ def getEndpoint() {
 }
 
 def getEventName() {
-    return "illuminance"
+    return 'illuminance'
+}
+
+def getEventFormats() {
+    return '%slx'
 }
 
 def getExtraConfig() {

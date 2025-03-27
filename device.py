@@ -4,23 +4,15 @@ import json
 import hubee
 from zigbee import Zigbee
 
-# @formatter:off
-_CMD_STATUS     = '01'
-_CMD_CONFIG     = '02'
-_CMD_STARTED    = '03'
-_CMD_REPLY      = '04'
-_CMD_UNKNOWN    = '88'
-_CMD_INFO       = '97'
-_CMD_WARN       = '98'
-_CMD_ERROR      = '99'
 
-_P_FIXED        = 'FI'
-_P_OFFSET       = 'OF'
-_P_AMOUNT       = 'AM'
-_P_MIN_INTERVAL = 'MI'
-_P_MAX_INTERVAL = 'MA'
-# @formatter:on
-
+# _CMD_STATUS  = '01'
+# _CMD_CONFIG  = '02'
+# _CMD_STARTED = '03'
+# _CMD_REPLY   = '04'
+# _CMD_UNKNOWN = '88'
+# _CMD_INFO    = '97'
+# _CMD_WARN    = '98'
+# _CMD_ERROR   = '99'
 
 class Device:
 
@@ -35,48 +27,57 @@ class Device:
 
     def start(self, zigbee: Zigbee):
         self.zigbee = zigbee
-        self._transmit(_CMD_STARTED, 'Device on endpoint {} started', self.get_endpoint())
+        self._transmit('03', 'Device on endpoint {:02X} started', self.get_endpoint())
         self._config_start()
 
     def _config_start(self):
-        self._transmit(_CMD_CONFIG, 'Send me my config')
+        self._transmit('02', 'Send me my config')
 
     def handle_command(self, command: str, payload: str):
-        if command == _CMD_CONFIG:
+        if command == '02':
             self._load_config(payload)
         else:
             self.child_handle_command(command, payload)
 
     def _load_config(self, payload: str):
-        self.configure(json.loads(payload))
-        suffix = '' if self.configured else ', can now start reporting'
-        self.configured = True
-        self.transmit_info('Endpoint {} configured{}', self.get_endpoint(), suffix)
-        gc.collect()
+        self.configured = self.configure(json.loads(payload))
+        if self.configured:
+            self.transmit_info('Endpoint {:02X} configured', self.get_endpoint())
+        else:
+            self.transmit_error('Endpoint {:02X} configuration failed', self.get_endpoint())
 
     def child_handle_command(self, command: str, payload: str):
         self.handle_unknown_command(command)
 
-    def handle_unknown_command(self, command: str, endpoint: int = None):
+    def handle_unknown_command(self, command: str, endpoint: int = None, cluster: int = None, payload: str = None):
         actual_endpoint = endpoint if self.get_endpoint() is None else endpoint
-        self._transmit(_CMD_ERROR, 'Unknown cmd: EP: {}, CMD: {}', actual_endpoint, command)
+        # 255 is broadcast and 0 is ZDO (stack level), ignoring
+        if 255 > endpoint > 0:
+            self.transmit_error('UNKcmd EP{:02X} CM{} CL{} {}', actual_endpoint, command, cluster,
+                                self._filter_non_printable(payload))
+
+    def _filter_non_printable(self, text: str):
+        return ''.join([s for s in text.strip() if ord(s) < 127])
 
     def transmit_status(self, status: str, *args):
-        self._transmit(_CMD_STATUS, status, *args)
+        self._transmit('01', status, *args)
 
     def transmit_reply(self, message: str, *args):
-        self._transmit(_CMD_REPLY, message, *args)
+        self._transmit('04', message, *args)
 
     def transmit_warn(self, message: str, *args):
-        self._transmit(_CMD_WARN, message, *args)
+        self._transmit('98', message, *args)
 
     def transmit_info(self, message: str, *args):
-        self._transmit(_CMD_INFO, message, *args)
+        self._transmit('97', message, *args)
+
+    def transmit_error(self, message: str, *args):
+        self._transmit('99', message, *args)
 
     def _transmit(self, command: str, payload: str, *args):
         self.zigbee.transmit(self.get_endpoint(), command, payload, *args)
 
-    def str_2_decimals(self, value) -> str:
+    def _str_2_decimals(self, value) -> str:
         return "{:.2f}".format(value)
 
     def child_check_send_status(self, time_now: int):
@@ -111,7 +112,8 @@ class PeriodicDevice(Device):
         return hubee.interval_expired(time_now, self.last_report_time, self.min_interval)
 
     def configure(self, json_conf: object):
-        self._set_min_interval(json_conf[_P_MIN_INTERVAL])
+        self._set_min_interval(json_conf['MI'])
+        return True
 
     def _report(self):
         self.transmit_status(self.get_report_value())
@@ -136,7 +138,7 @@ class NumericChangeDevice(PeriodicDevice):
 
     def child_check_send_status(self, time_now: int):
         if self.min_interval_expired(time_now):
-            self.last_reading = self.read_sensor()
+            self.last_reading = self.read_sensor() + self.offset
             if self._should_report(time_now):
                 self.last_reported_value = self.last_reading
                 self.do_report(time_now)
@@ -146,13 +148,13 @@ class NumericChangeDevice(PeriodicDevice):
             return True
 
         diff = abs(self.last_reading - self.last_reported_value)
-        if diff == 0x00:
+        if diff == 0:
             return False
 
         if self.fixed_value:
             return diff >= self.change_amount
 
-        if self.last_reported_value == 0x00:
+        if self.last_reported_value == 0:
             return True
 
         percentage_change = abs(diff / self.last_reported_value * 100)
@@ -163,10 +165,11 @@ class NumericChangeDevice(PeriodicDevice):
 
     def configure(self, json_conf):
         super().configure(json_conf)
-        self.offset = json_conf[_P_OFFSET]
-        self.fixed_value = json_conf[_P_FIXED]
-        self.change_amount = json_conf[_P_AMOUNT]
-        self._set_max_interval(json_conf[_P_MAX_INTERVAL])
+        self.offset = json_conf['OF']
+        self.fixed_value = json_conf['FI']
+        self.change_amount = json_conf['AM']
+        self._set_max_interval(json_conf['MA'])
+        return True
 
     def read_sensor(self):
         raise NotImplementedError

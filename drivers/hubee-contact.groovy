@@ -1,10 +1,10 @@
 metadata {
-    definition (name: "Hubee Contact Sensor", namespace: "edu", author: "Eduardo Simioni") {
-        capability "Sensor"
-        capability "Contact Sensor"
+    definition (name: 'Hubee Contact Sensor', namespace: 'edu', author: 'Eduardo Simioni') {
+        capability 'Sensor'
+        capability 'Contact Sensor'
     }
     preferences {
-        input (name: "openState", type: "enum", title: "Open State", description: "", defaultValue: "1", options: ["1", "0"])
+        input (name: 'openState', type: 'enum', title: 'Open State', description: '', defaultValue: '1', options: ['1', '0'])
     }
 }
 
@@ -16,7 +16,11 @@ def getEndpoint() {
 }
 
 def getEventName() {
-    return "contact"
+    return 'contact'
+}
+
+def getEventFormats() {
+    return '%s'
 }
 
 def getConfigPayload() {

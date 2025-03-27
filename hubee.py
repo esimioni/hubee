@@ -1,6 +1,7 @@
 import time
 
 IS_PROD = True
+SW_VER = '1.0.0'
 
 
 def interval_expired(time_now: int, time_ref: int, interval: int) -> bool:
